@@ -1,0 +1,80 @@
+% NS_B
+<s>        sil
+
+% NS_E
+</s>        sil
+
+% SELECT
+
+BLUE		b l uw
+RED		r eh d
+GREEN           g r iy n
+ALL             ao l
+
+% DRONE
+
+HAWK            hh ao k
+HAWKS           hh ao k s
+
+% YOU
+
+YOU             y uw
+
+% COMMAND_MOVE
+
+GO		g ow
+
+% WHERE
+
+AHEAD		ax hh eh d
+THERE		dh eh r
+RIGHT		r ay t
+LEFT		l eh f t
+UP		ah p
+DOWN		d aw n
+BACK            b ae k
+
+%COMMAND_SEARCH
+
+SEARCH		s er ch
+
+%SEARCH_STRATEGY
+
+EXPAND		ix k s p ae n d
+GRID            g r ih d
+
+% COMMAND_DO
+
+START		s t aa r t
+LAND		l ae n d
+STOP		s t aa p
+CONTINUE	k ax n t ih n y uw
+
+% SINGLEDIGIT
+
+ZERO		z ih r ow
+OH              ow
+ONE             w ah n
+TWO             t uw
+THREE		th r iy
+FOUR            f ao r
+FIVE            f ay v
+SIX		s ih k s
+SEVEN           s eh v ax n
+EIGHT           ey t
+NINE		n ay n
+
+% DECDIGIT_CLOCK
+
+TEN             t eh n
+ELEVEN          ix l eh v ax n
+
+% UNIT
+
+METER           m iy dx er
+METERS          m iy dx er z
+
+% OCLOCK
+
+O'CLOCK		ax k l aa k
+
