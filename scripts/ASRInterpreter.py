@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 __author__ = 'antonio'
 
+import rospkg
 import socket
 from subprocess import Popen
 import multiprocessing
@@ -12,8 +13,8 @@ import string
 def callJulius(port):
 	s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 	s.connect(('127.0.0.1', port))
-
-	os.chdir(os.getcwd() + '/src/sherpa_hri/scripts')
+    
+	os.chdir(rospkg.RosPack().get_path('sherpa_hri') + '/scripts')
 	p = Popen(['julius', '-C', 'julian_server.jconf'], stdout= s, stderr= s)
 
 def getAuxDigit(data):

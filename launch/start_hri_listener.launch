@@ -1,0 +1,9 @@
+<launch>
+
+	<node name="ASRI_Interpreter" pkg="sherpa_hri" type="ASRInterpreter.py" respawn="false" output="screen"/>
+	<node name="Input_Merger" pkg="sherpa_hri" type="InputMerger.py" respawn="false" output="screen"/>
+
+
+
+
+</launch>
