@@ -152,6 +152,8 @@ def ASRInterpreter():
 				elif data.find("ROCK"):
 					auxDigit= 2
 
+
+
 			rospy.loginfo([selected, command, auxDigit])
 			msg.selected= selected
 			msg.command= command
