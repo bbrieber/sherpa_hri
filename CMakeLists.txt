@@ -50,7 +50,6 @@ find_package(catkin REQUIRED COMPONENTS
    Asr.msg
    Xsens.msg
    HRI_output.msg
-   XsensStream.msg
  )
 
 ## Generate services in the 'srv' folder

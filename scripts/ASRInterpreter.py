@@ -116,7 +116,7 @@ def ASRInterpreter():
 					auxDigit = 23
 				elif data.find("CAP") >= 0:
 					auxDigit = 20
-				
+
 			if data.find("STOP") >= 0:
 				command= 4
 			if data.find("CONTINUE") >= 0:
@@ -151,8 +151,6 @@ def ASRInterpreter():
 					auxDigit= 1
 				elif data.find("ROCK"):
 					auxDigit= 2
-
-
 
 			rospy.loginfo([selected, command, auxDigit])
 			msg.selected= selected
