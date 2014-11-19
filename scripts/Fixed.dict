@@ -1,8 +1,5 @@
 0	[<s>]	sil
 1	[</s>]	sil
-2	[BLUE]	b l uw
-2	[RED]	r eh d
-2	[GREEN]	g r iy n
 2	[ALL]	ao l
 3	[HAWK]	hh ao k
 3	[HAWKS]	hh ao k s
@@ -16,25 +13,34 @@
 6	[DOWN]	d aw n
 6	[BACK]	b ae k
 7	[SEARCH]	s er ch
-8	[EXPAND]	ix k s p ae n d
-8	[GRID]	g r ih d
-9	[START]	s t aa r t
-9	[LAND]	l ae n d
-9	[STOP]	s t aa p
-9	[CONTINUE]	k ax n t ih n y uw
-10	[ZERO]	z ih r ow
-10	[OH]	ow
-10	[ONE]	w ah n
-10	[TWO]	t uw
-10	[THREE]	th r iy
-10	[FOUR]	f ao r
-10	[FIVE]	f ay v
-10	[SIX]	s ih k s
-10	[SEVEN]	s eh v ax n
-10	[EIGHT]	ey t
-10	[NINE]	n ay n
-11	[TEN]	t eh n
-11	[ELEVEN]	ix l eh v ax n
-12	[METER]	m iy dx er
-12	[METERS]	m iy dx er z
-13	[O'CLOCK]	ax k l aa k
+8	[BLUE]	b l uw
+8	[RED]	r eh d
+8	[GREEN]	g r iy n
+9	[REACH]	r iy ch
+10	[TREE]	t r iy
+10	[ROCK]	r aa k
+11	[THAT]	dh ae t
+12	[JACKET]	jh ae k ax t
+12	[CAP]	k ae p
+13	[EXPAND]	ix k s p ae n d
+13	[GRID]	g r ih d
+14	[START]	s t aa r t
+14	[LAND]	l ae n d
+14	[STOP]	s t aa p
+14	[CONTINUE]	k ax n t ih n y uw
+15	[ZERO]	z ih r ow
+15	[OH]	ow
+15	[ONE]	w ah n
+15	[TWO]	t uw
+15	[THREE]	th r iy
+15	[FOUR]	f ao r
+15	[FIVE]	f ay v
+15	[SIX]	s ih k s
+15	[SEVEN]	s eh v ax n
+15	[EIGHT]	ey t
+15	[NINE]	n ay n
+16	[TEN]	t eh n
+16	[ELEVEN]	ix l eh v ax n
+17	[METER]	m iy dx er
+17	[METERS]	m iy dx er z
+18	[O'CLOCK]	ax k l aa k

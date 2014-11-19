@@ -1,8 +1,17 @@
 #!/usr/bin/env python
-__author__ = 'antonio'
+__author__ = 'Antonio Origlia'
 
 import rospy
 from sherpa_hri.msg import Asr, HRI_output, Xsens
+from lxml import etree
+from copy import deepcopy
+
+EMMA_NAMESPACE = "http://www.w3.org/2003/04/emma"
+EMMA = "{%s}" % EMMA_NAMESPACE
+NSMAP = {None : EMMA_NAMESPACE}
+
+GESTURE_WAIT= 1.0
+
 
 class HRI_Node():
 	def __init__(self):
@@ -10,61 +19,83 @@ class HRI_Node():
 		rospy.Subscriber("ASRResult", Asr, self.ASRCallback)
 		rospy.Subscriber("XsensResult", Xsens, self.XsensCallback)
 
-		self.armDir = [0.0, 0.0, 0.0]
-		self.armTime = rospy.Time()
-		self.armCom = 0.0
+		self.asrTime= rospy.Time.now()
+		self.gestureTime= rospy.Time.now()
 
-		self.asrCom = [0.0, 0.0, 0.0]
-		self.asrTime = rospy.Time()
+		self.gestureDerivation= etree.Element(EMMA + "derivation", nsmap= NSMAP, attrib= {"version": "1.0", "start": "0.0", "end": "0,0",})
+
+		self.lastSelected = "ALL HAWKS"
+		self.mandatoryGestureCommands= ["GO THERE", "YOU", "REACH"]
 
 		rospy.spin()
 
+
 	def ASRCallback(self, msg):
-		self.asrCom = [msg.selected, msg.command, msg.auxDigit]
-		self.asrTime = msg.stamp
+		root= etree.Element(EMMA + "emma", nsmap= NSMAP, attrib= {"version": "1.0",})
+		interpretation = etree.Element(EMMA + "interpretation", nsmap= NSMAP, attrib= {"id": "multimodal",})
 
-		outMsg= HRI_output()
-		outMsg.selected= msg.selected
-		outMsg.command= msg.command
-		outMsg.auxDigit= msg.auxDigit
+		asrDerivation = etree.Element(EMMA + "derivation", nsmap= NSMAP, attrib= {"version": "1.0",})
+		asrDerivation.append(etree.fromstring(msg.emmatree).xpath('child::*')[0])
+		root.append(asrDerivation)
 
-		if (msg.selected == 1 or msg.command == 20 or msg.command == 28):
-			if abs(self.armTime - msg.stamp) >= rospy.Duration(1):
-				rospy.sleep(1.0)
-				if abs(self.armTime - msg.stamp) >= rospy.Duration(1):
-					rospy.loginfo("Command rejected: required auxiliary gesture was not available")
-					return
-			outMsg.armDir= self.armDir
+		self.asrTime= rospy.Time(int(asrDerivation.xpath('child::*')[0].get('start')))
+
+		selected= asrDerivation.xpath("emma:selected", namespaces={'emma': EMMA_NAMESPACE})
+		if len(selected) == 0:
+			selected= etree.Element(EMMA + "selected", nsmap= NSMAP)
+			selected.text= self.lastSelected
 		else:
-			outMsg.armDir= [0.0, 0.0, 0.0]
+			selected= selected[0]
+			if selected.text in self.mandatoryGestureCommands:
+				if abs(self.gestureTime - self.asrTime) >= rospy.Duration(GESTURE_WAIT):
+					rospy.sleep(GESTURE_WAIT)
+					if abs(self.gestureTime - self.asrTime) >= rospy.Duration(GESTURE_WAIT):
+						rospy.loginfo("Selection rejected: required auxiliary gesture was not available")
+						return
+			asrDerivation.append(deepcopy(self.gestureDerivation.xpath('child::*')[0]))
+			self.lastSelected= selected.text
+			selected= deepcopy(selected)
 
-		rospy.loginfo(str(outMsg.selected))
-		rospy.loginfo(str(outMsg.command))
-		rospy.loginfo(str(outMsg.auxDigit))
-		rospy.loginfo(str(outMsg.armDir))
-		rospy.loginfo("-------------")
-		self.pub.publish(outMsg)
-	
+		interpretation.append(selected)
+
+		command= asrDerivation.xpath('emma:command', namespaces={'emma': EMMA_NAMESPACE})
+		if len(command) > 0:
+			command= deepcopy(command[0])
+			if command.text in self.mandatoryGestureCommands:
+				if abs(self.gestureTime - self.asrTime) >= rospy.Duration(GESTURE_WAIT):
+					rospy.sleep(GESTURE_WAIT)
+					if abs(self.gestureTime - self.asrTime) >= rospy.Duration(GESTURE_WAIT):
+						rospy.loginfo("Command rejected: required auxiliary gesture was not available")
+						return
+				asrDerivation.append(deepcopy(self.gestureDerivation.xpath('child::*')[0]))
+				command.set("dirX", str(self.gestureDerivation.xpath("emma:command/@dirX", namespaces={'emma': EMMA_NAMESPACE})))
+				command.set("dirY", str(self.gestureDerivation.xpath("emma:command/@dirY", namespaces={'emma': EMMA_NAMESPACE})))
+				command.set("dirZ", str(self.gestureDerivation.xpath("emma:command/@dirZ", namespaces={'emma': EMMA_NAMESPACE})))
+
+			interpretation.append(command)
+				
+		root.append(interpretation)
+		rospy.loginfo(etree.tostring(root, pretty_print=True))
+		self.pub.publish(etree.tostring(root))
+
 
 	def XsensCallback(self, msg):
-		self.armCom = msg.command
-		self.armDir = [msg.dirVecX, msg.dirVecY, msg.dirVecZ]
-		self.armTime = msg.stamp
+		root= etree.Element(EMMA + "emma", nsmap= NSMAP, attrib= {"version": "1.0",})
 
-		rospy.sleep(1.0)
+		self.gestureDerivation = etree.Element(EMMA + "derivation", nsmap= NSMAP, attrib= {"version": "1.0",})
+		self.gestureDerivation.append(etree.fromstring(msg.emmatree).xpath('child::*')[0])
 
-		if abs(msg.stamp - self.asrTime) > rospy.Duration(1):
-			outMsg= HRI_output()
-			outMsg.selected= 0
-			outMsg.command= msg.command
-			outMsg.auxDigit= 0
-			outMsg.armDir= [msg.dirVecX, msg.dirVecY, msg.dirVecZ]
-			rospy.loginfo(str(msg.command))
-			rospy.loginfo(str(msg.dirVecX))
-			rospy.loginfo(str(msg.dirVecY))
-			rospy.loginfo(str(msg.dirVecZ))
-			rospy.loginfo("-------------")
-			self.pub.publish(outMsg)
+		self.gestureTime= rospy.Time(int(self.gestureDerivation.get('start')))
+
+		rospy.sleep(GESTURE_WAIT)
+
+		if abs(self.gestureTime - self.asrTime) > rospy.Duration(1):
+			interpretation = etree.Element(EMMA + "interpretation", nsmap= NSMAP, attrib= {"id": "multimodal",})
+			interpretation.append(self.gestureDerivation.xpath('emma:command', namespaces={'emma': EMMA_NAMESPACE})[0])
+			root.append(deepcopy(self.gestureDerivation))
+			root.append(interpretation)
+			rospy.loginfo(etree.tostring(root, pretty_print=True))
+			self.pub.publish(etree.tostring(root))
 
 
 if __name__ == '__main__':

@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-__author__ = 'antonio'
+__author__ = 'Antonio Origlia'
 
 import socket
 import rospy
@@ -9,19 +9,27 @@ import numpy as np
 from subprocess import call, Popen, PIPE
 import rospkg
 import os
+from lxml import etree
 
+EMMA_NAMESPACE = "http://www.w3.org/2003/04/emma"
+EMMA = "{%s}" % EMMA_NAMESPACE
+NSMAP = {None : EMMA_NAMESPACE}
+
+# Set XSENS streaming constants
 XSENS_STREAM_PORT = 25114
 BUFSIZE = 720
 SEGMENT_DATA_LENGTH = 32
 TIMESTEP = 100
 MINLEN = 5
 
+# Set XSENS segment numbers
 PELVIS = 1
 RIGHT_SHOULDER = 8
 RIGHT_UPPER_ARM = 9
 RIGHT_FOREARM = 10
 RIGHT_HAND = 11
 
+# Set LDCRF classification codes
 GO_AWAY = 0
 GO_BACK = 1
 SEARCH = 2
@@ -29,6 +37,7 @@ STOP = 3
 GO_UP = 4
 GO_DOWN = 5
 
+# Class to represent segment data
 class Segment:
 	x = 0.0
 	y = 0.0
@@ -38,6 +47,7 @@ class Segment:
 	j = 0.0
 	k = 0.0
 
+# Quaternion utilities
 def q_mult(q1, q2):
 	w1, x1, y1, z1 = q1
 	w2, x2, y2, z2 = q2
@@ -55,9 +65,8 @@ def qv_mult(q1, v1):
 	q2 = (0.0,) + v1
 	return q_mult(q_mult(q_conjugate(q1), q2), q1)[1:]
 
+# Captures and classifies gesture commands
 def GesturesInterpreter():
-
-	n= 1
 
 	# Get the file path for sherpa_hri
 	hriDir = os.chdir(rospkg.RosPack().get_path('sherpa_hri') + '/scripts')
@@ -78,19 +87,18 @@ def GesturesInterpreter():
 	}
 
 	# Create HCRF to SHERPA command translation
-	commandsDict = {GO_AWAY : 21,
-			GO_BACK : 27,
-			SEARCH : 3,
-			STOP : 4,
-			GO_UP : 24,
-			GO_DOWN : 25,
+	commandsDict = {GO_AWAY : "GO AWAY",
+			GO_BACK : "GO BACK",
+			SEARCH : "SEARCH",
+			STOP : "STOP",
+			GO_UP : "GO UP",
+			GO_DOWN : "GO DOWN",
 	}
 
 	# Init ROS
 	pub = rospy.Publisher('XsensResult', Xsens, queue_size=0)
 	rospy.init_node('HRI_Gestures')
 	msg = Xsens()
-	msgStream= XsensStream()
 
 	# Init socket to receive XSENS streaming
 	s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -181,9 +189,9 @@ def GesturesInterpreter():
 					# Record direction at maximum hand height
 					if segmentsDict[RIGHT_HAND].z > maxZ:
 						maxZ= segmentsDict[RIGHT_HAND].z
-						msg.dirVecX= rotVec[0] - rotVecShoulder[0]
-						msg.dirVecY= rotVec[1] - rotVecShoulder[1]
-						msg.dirVecZ= rotVec[2] - rotVecShoulder[2]
+						dirVecX= rotVec[0] - rotVecShoulder[0]
+						dirVecY= rotVec[1] - rotVecShoulder[1]
+						dirVecZ= rotVec[2] - rotVecShoulder[2]
 
 					# Compute first derivative of the movement (m/s)
 					divTime= (time - oldTime) / 1000.0
@@ -207,7 +215,8 @@ def GesturesInterpreter():
 						# Transpose matrix
 						gesture = zip(*gesture)
 
-						# Export file for classification (quick, ugly implementation: convert into in-memory computation)
+						# Export file for classification 
+						# TODO: quick, ugly implementation. Convert into in-memory computation
 						with open("dataTest.csv", "w") as myfile:
 							myfile.write(	"4, " + \
 									str(len(gesture[0])) + '\n' + \
@@ -220,16 +229,26 @@ def GesturesInterpreter():
 									str(len(gesture[0])) + '\n' + \
 									str([0] * len(gesture[0]))[1:-1])
 
-						# Classify gesture
+						# Classify gesture and build EMMA tree
 						pipe= Popen("./hcrfTest -T -m Gestures.mdl -f Gestures.fts -w 3 -h 5 -a ldcrf", shell= True, stdout= PIPE).stdout
 						for index, line in enumerate(pipe.readlines()[17:-3]):
 							if line[7] == "1":
-								msg.command= commandsDict[index]
+								root= etree.Element(EMMA + "emma", nsmap= NSMAP, attrib= {"version": "1.0",})
+								interpretation = etree.Element(EMMA + "interpretation", nsmap= NSMAP, attrib= {"id": "XSENS", "medium": "gesture", "mode": "upper_body"})
+								t= str(int(rospy.Time.now().to_sec()))
+								interpretation.set("start", t)
+								interpretation.set("end", t)
+								command= etree.Element(EMMA + "command", nsmap= NSMAP)
+								command.text= str(commandsDict[index])
+								command.set("dirX", str(dirVecX))
+								command.set("dirY", str(dirVecY))
+								command.set("dirZ", str(dirVecZ))
+								interpretation.append(command)
+								root.append(interpretation)
 
 						#Send gesture
-						rospy.loginfo(msg.command)
-						msg.stamp= rospy.Time.now()
-						pub.publish(msg)
+						rospy.loginfo(etree.tostring(root, pretty_print=True))
+						pub.publish(etree.tostring(root))
 
 						# Reset gesture
 						gesture = []

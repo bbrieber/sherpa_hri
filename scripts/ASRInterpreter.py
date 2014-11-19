@@ -1,21 +1,27 @@
 #!/usr/bin/env python
-__author__ = 'antonio'
+__author__ = 'Antonio Origlia'
 
-import rospkg
 import socket
 from subprocess import Popen
 import multiprocessing
 import rospy
 from sherpa_hri.msg import Asr
+from lxml import etree
 import os
 import string
+from math import floor
+
+EMMA_NAMESPACE = "http://www.w3.org/2003/04/emma"
+EMMA = "{%s}" % EMMA_NAMESPACE
+NSMAP = {None : EMMA_NAMESPACE}
 
 def callJulius(port):
 	s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 	s.connect(('127.0.0.1', port))
-    
-	os.chdir(rospkg.RosPack().get_path('sherpa_hri') + '/scripts')
-	p = Popen(['julius', '-C', 'julian_server.jconf'], stdout= s, stderr= s)
+
+	os.chdir(os.getcwd() + '/src/sherpa_hri/scripts')
+	#p = Popen(['julius', '-C', 'julian_server.jconf'], stdout= s, stderr= s)
+	p = Popen(['julius', '-C', 'julian.jconf'], stdout= s, stderr= s)
 
 def getAuxDigit(data):
 	if data.find("METER") >= 0:
@@ -75,90 +81,174 @@ def ASRInterpreter():
 
 	while not rospy.is_shutdown():
 		data = conn.recv(4096)
-		selected= 0
-		auxDigit= 0
-		command= 0
+
 		if data.find("sentence1") >= 0:
 			data=data[data.find("sentence1")+15:data.find(" </s>")]
+
+			root = etree.Element(EMMA + "emma", nsmap= NSMAP, attrib= {"version": "1.0",})
+			interpretation = etree.Element(EMMA + "interpretation", nsmap= NSMAP, attrib= {"id": "julius", "medium": "acoustic", "mode": "voice", "verbal": "true", "lang": "en-US",})
+			t= str(int(rospy.Time.now().to_sec()))
+			interpretation.set("start", t)
+			interpretation.set("end", t)
+			rawInput = etree.Element(EMMA + "rawInput", nsmap= NSMAP)
+			rawInput.text = data
+			interpretation.append(rawInput)
+
+			# TODO: String parser is very basic. Improve parsing for scalability
+			# (use dictionaries, regular expressions and the Julius recognition grammar)
 			if data.find("YOU") >= 0:
-				selected= 1
+				selected= etree.Element(EMMA + "selected", nsmap= NSMAP)
+				selected.text= "YOU"
+				interpretation.append(selected)
+				
 			if data.find("BLUE HAWK") >= 0:
-				selected= 4
+				selected= etree.Element(EMMA + "selected", nsmap= NSMAP)
+				selected.text= "BLUE HAWK"
+				interpretation.append(selected)
+
 			if data.find("RED HAWK") >= 0:
-				selected= 2
+				selected= etree.Element(EMMA + "selected", nsmap= NSMAP)
+				selected.text= "RED HAWK"
+				interpretation.append(selected)
+
 			if data.find("GREEN HAWK") >= 0:
-				selected= 3
-			if data.find("ALL HAWKS") >= 0:
-				selected= 10
+				selected= etree.Element(EMMA + "selected", nsmap= NSMAP)
+				selected.text= "GREEN HAWK"
+				interpretation.append(selected)
+
+			if data.find("ALL HAWK") >= 0:
+				selected= etree.Element(EMMA + "selected", nsmap= NSMAP)
+				selected.text= "ALL HAWKS"
+				interpretation.append(selected)
 
 			if data.find("START") >= 0:
-				command= 1
+				command= etree.Element(EMMA + "command", nsmap= NSMAP)
+				command.text= "START"
+				interpretation.append(command)
+
 			if data.find("LAND") >= 0:
-				command= 2
+				command= etree.Element(EMMA + "command", nsmap= NSMAP)
+				command.text= "LAND"
+				interpretation.append(command)
+
 			if data.find("SEARCH") >= 0:
-				command= 3
+				command= etree.Element(EMMA + "command", nsmap= NSMAP)
+				command.text= "SEARCH"
+				
 				if data.find("EXPAND") >= 0:
-					auxDigit = 1
+					command.set("aux", "EXPAND")
 				elif data.find("GRID") >= 0:
-					auxDigit = 2
+					command.set("aux", "GRID")
 				elif data.find("RED JACKET") >= 0:
-					auxDigit = 11
+					command.set("aux", "RED JACKET")
 				elif data.find("GREEN JACKET") >= 0:
-					auxDigit = 12
+					command.set("aux", "GREEN JACKET")
 				elif data.find("BLUE JACKET") >= 0:
-					auxDigit = 13
+					command.set("aux", "BLUE JACKET")
 				elif data.find("JACKET") >= 0:
-					auxDigit = 10
+					command.set("aux", "JACKET")
 				elif data.find("RED CAP") >= 0:
-					auxDigit = 21
+					command.set("aux", "RED CAP")
 				elif data.find("GREEN CAP") >= 0:
-					auxDigit = 22
+					command.set("aux", "GREEN CAP")
 				elif data.find("BLUE CAP") >= 0:
-					auxDigit = 23
+					command.set("aux", "BLUE CAP")
 				elif data.find("CAP") >= 0:
-					auxDigit = 20
+					command.set("aux", "CAP")
+				interpretation.append(command)
 
 			if data.find("STOP") >= 0:
-				command= 4
+				command= etree.Element(EMMA + "command", nsmap= NSMAP)
+				command.text= "STOP"
+				interpretation.append(command)
+
 			if data.find("CONTINUE") >= 0:
-				command= 5
+				command= etree.Element(EMMA + "command", nsmap= NSMAP)
+				command.text= "CONTINUE"
+				interpretation.append(command)
 		        
 			if data.find("THERE") >= 0:
-				command= 20
-			if data.find("AHEAD") >= 0:
-				command= 21
-				auxDigit= getAuxDigit(data)
-			if data.find("RIGHT") >= 0:
-				command= 22
-				auxDigit= getAuxDigit(data)
-			if data.find("LEFT") >= 0:
-				command= 23
-				auxDigit= getAuxDigit(data)
-			if data.find("UP") >= 0:
-				command= 24
-				auxDigit= getAuxDigit(data)
-			if data.find("DOWN") >= 0:
-				command= 25
-				auxDigit= getAuxDigit(data)
-			if data.find("O'CLOCK") >= 0:
-				command= 26
-				auxDigit= getClockDigit(data)
-			if data.find("BACK") >= 0:
-				command= 27
-				auxDigit= getAuxDigit(data)
-			if data.find("REACH") >= 0:
-				command= 28
-				if data.find("TREE"):
-					auxDigit= 1
-				elif data.find("ROCK"):
-					auxDigit= 2
+				command= etree.Element(EMMA + "command", nsmap= NSMAP)
+				command.text= "GO THERE"
+				interpretation.append(command)
 
-			rospy.loginfo([selected, command, auxDigit])
-			msg.selected= selected
-			msg.command= command
-			msg.auxDigit= auxDigit
-			msg.stamp= rospy.Time.now()
-			pub.publish(msg)
+			if data.find("AHEAD") >= 0:
+				auxDigit= getAuxDigit(data)
+				if auxDigit > 0:
+					command= etree.Element(EMMA + "command", nsmap= NSMAP, attrib= {"aux": str(auxDigit),})
+					command.text= "GO AHEAD"
+				else:
+					command= etree.Element(EMMA + "command", nsmap= NSMAP)
+					command.text= "GO AHEAD"
+				interpretation.append(command)
+
+			if data.find("RIGHT") >= 0:
+				auxDigit= getAuxDigit(data)
+				if auxDigit > 0:
+					command= etree.Element(EMMA + "command", nsmap= NSMAP, attrib= {"aux": str(auxDigit),})
+					command.text= "GO RIGHT"
+				else:
+					command= etree.Element(EMMA + "command", nsmap= NSMAP)
+					command.text= "GO RIGHT"
+				interpretation.append(command)
+
+			if data.find("LEFT") >= 0:
+				auxDigit= getAuxDigit(data)
+				if auxDigit > 0:
+					command= etree.Element(EMMA + "command", nsmap= NSMAP, attrib= {"auxDigit": str(auxDigit),})
+					command.text= "GO LEFT"
+				else:
+					command= etree.Element(EMMA + "command", nsmap= NSMAP)
+					command.text= "GO LEFT"
+				interpretation.append(command)
+
+			if data.find("UP") >= 0:
+				auxDigit= getAuxDigit(data)
+				if auxDigit > 0:
+					command= etree.Element(EMMA + "command", nsmap= NSMAP, attrib= {"aux": str(auxDigit),})
+					command.text= "GO UP"
+				else:
+					command= etree.Element(EMMA + "command", nsmap= NSMAP)
+					command.text= "GO UP"
+				interpretation.append(command)
+
+			if data.find("DOWN") >= 0:
+				auxDigit= getAuxDigit(data)
+				if auxDigit > 0:
+					command= etree.Element(EMMA + "command", nsmap= NSMAP, attrib= {"aux": str(auxDigit),})
+					command.text= "GO DOWN"
+				else:
+					command= etree.Element(EMMA + "command", nsmap= NSMAP)
+					command.text= "GO DOWN"
+				interpretation.append(command)
+
+			if data.find("O'CLOCK") >= 0:
+				auxDigit= getAuxDigit(data)
+				command= etree.Element(EMMA + "command", nsmap= NSMAP, attrib= {"aux": str(auxDigit),})
+				command.text= "ROTATE"
+				interpretation.append(command)
+
+			if data.find("BACK") >= 0:
+				auxDigit= getAuxDigit(data)
+				if auxDigit > 0:
+					command= etree.Element(EMMA + "command", nsmap= NSMAP, attrib= {"aux": str(auxDigit),})
+					command.text= "GO BACK"
+				else:
+					command= etree.Element(EMMA + "command", nsmap= NSMAP)
+					command.text= "GO BACK"
+				interpretation.append(command)
+
+			if data.find("REACH") >= 0:
+				if data.find("TREE") >= 0:
+					command= etree.Element(EMMA + "command", nsmap= NSMAP, attrib= {"aux": "TREE",})
+				elif data.find("ROCK") >= 0:
+					command= etree.Element(EMMA + "command", nsmap= NSMAP, attrib= {"aux": "ROCK",})
+				command.text= "REACH"
+				interpretation.append(command)
+
+			root.append(interpretation)
+			rospy.loginfo(etree.tostring(root, pretty_print=True))
+			pub.publish(etree.tostring(root))
 
 	s.close()
 	p.close()

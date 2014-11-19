@@ -6,9 +6,6 @@
 
 % SELECT
 
-BLUE		b l uw
-RED		r eh d
-GREEN           g r iy n
 ALL             ao l
 
 % DRONE
@@ -37,6 +34,30 @@ BACK            b ae k
 %COMMAND_SEARCH
 
 SEARCH		s er ch
+
+% COLOR
+
+BLUE		b l uw
+RED		r eh d
+GREEN           g r iy n
+
+%COMMAND_REACH
+
+REACH		r iy ch
+
+%REACH_LANDMARK
+
+TREE		t r iy
+ROCK		r aa k
+
+%REACH_INDICATOR
+
+THAT            dh ae t
+
+%SEARCH_OBJECT
+
+JACKET		jh ae k ax t
+CAP		k ae p
 
 %SEARCH_STRATEGY
 
